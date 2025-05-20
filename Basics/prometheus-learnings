@@ -148,7 +148,167 @@ Time Series
 The Prometheus time series are streams of timestamped values belonging to the same metric and the same set of labeled dimensions. Prometheus stores all data as time series.
 
 
+CONCEPTS:
+========
+
+Data model
+
+Labels let you capture different instances of the same metric name. For example: all HTTP requests that used the method POST to the /api/tracks handler. 
+We refer to this as Prometheus's "dimensional data model". The query language allows filtering and aggregation based on these dimensions. The change of any label's value, including adding or removing labels, will create a new time series.
+
+Samples
+Samples form the actual time series data. Each sample consists of:
+
+a float64 or native histogram value
+a millisecond-precision timestamp (1000s)
+
+##Prometheus scrapes at 15s interval but exporters updates its timestamps/metrics each second
+so when prometheus scrapes again it will get the latest record at instinct timestamp
+-> 1 min 4 scrapes will happen.
+
+Notation
+Given a metric name and a set of labels, time series are frequently identified using this notation:
+
+<metric name>{<label name>="<label value>", ...}
+
+*** Metric Types ***
+====================
+The Prometheus client libraries offer four core metric types. These are currently only differentiated in the client libraries (to enable APIs tailored to the usage of the specific types) and in the wire protocol. 
+The Prometheus server does not yet make use of the type information and flattens all data into untyped time series. This may change in the future.
+
+1) Counter
+A counter is a cumulative metric that represents a single monotonically increasing counter whose value can only increase or be reset to zero on restart. For example, you can use a counter to represent the number of requests served, tasks completed, or errors.
+
+Do not use a counter to expose a value that can decrease. For example, do not use a counter for the number of currently running processes; instead use a gauge.
+
+2) Gauge
+A gauge is a metric that represents a single numerical value that can arbitrarily go up and down.
+
+Gauges are typically used for measured values like temperatures or current memory usage, but also "counts" that can go up and down, like the number of concurrent requests.
+
+3) Histogram
+A histogram samples observations (usually things like request durations or response sizes) and counts them in configurable buckets. It also provides a sum of all observed values.
+
+A histogram with a base metric name of <basename> exposes multiple time series during a scrape:
+
+cumulative counters for the observation buckets, exposed as <basename>_bucket{le="<upper inclusive bound>"}
+the total sum of all observed values, exposed as <basename>_sum
+the count of events that have been observed, exposed as <basename>_count (identical to <basename>_bucket{le="+Inf"} above)
+
+Use the histogram_quantile() function to calculate quantiles from histograms or even aggregations of histograms. 
+A histogram is also suitable to calculate an Apdex score. When operating on buckets, remember that the histogram is cumulative. See histograms and summaries for details of histogram usage and differences to summaries.
+
+4) Summary
+Similar to a histogram, a summary samples observations (usually things like request durations and response sizes). While it also provides a total count of observations and a sum of all observed values, it calculates configurable quantiles over a sliding time window.
+
+A summary with a base metric name of <basename> exposes multiple time series during a scrape:
+
+streaming φ-quantiles (0 ≤ φ ≤ 1) of observed events, exposed as <basename>{quantile="<φ>"}
+the total sum of all observed values, exposed as <basename>_sum
+the count of events that have been observed, exposed as <basename>_count
 
 
+JOBS AND INSTANCES:
+===================
 
+In Prometheus terms, an endpoint you can scrape is called an instance, usually corresponding to a single process. 
+A collection of instances with the same purpose, a process replicated for scalability or reliability for example, is called a job.
+
+
+For example, an API server job with four replicated instances:
+
+job: api-server
+instance 1: 1.2.3.4:5670
+instance 2: 1.2.3.4:5671
+instance 3: 5.6.7.8:5670
+instance 4: 5.6.7.8:5671
+
+Automatically generated labels and time series:
+
+When Prometheus scrapes a target, it attaches some labels automatically to the scraped time series which serve to identify the scraped target:
+
+job: The configured job name that the target belongs to.
+instance: The <host>:<port> part of the target's URL that was scraped
+
+For each instance scrape, Prometheus stores a sample in the following time series:
+
+
+- up{job="<job-name>", instance="<instance-id>"}: 1 if the instance is healthy, i.e. reachable, or 0 if the scrape failed.
+- scrape_duration_seconds{job="<job-name>", instance="<instance-id>"}: duration of the scrape.
+- scrape_samples_post_metric_relabeling{job="<job-name>", instance="<instance-id>"}: the number of - samples remaining after metric relabeling was applied.
+- scrape_samples_scraped{job="<job-name>", instance="<instance-id>"}: the number of samples the target exposed.
+- scrape_series_added{job="<job-name>", instance="<instance-id>"}: the approximate number of new series in this scrape. New in v2.10
+
+
+prometheus configuration:
+
+https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+
+
+*** Prometheus Rules *** 
+
+Prometheus supports two types of rules which may be configured and then evaluated at regular intervals: recording rules and alerting rules. To include rules in Prometheus, create a file containing the necessary rule statements and have Prometheus load the file via the rule_files field in the Prometheus configuration. 
+
+promtool check rules /path/to/example.rules.yml
+
+Recording rules:
+Recording rules allow you to precompute frequently needed or computationally expensive expressions and save their result as a new set of time series. Querying the precomputed result will then often be much faster than executing the original expression every time it is needed. This is especially useful for dashboards, which need to query the same expression repeatedly every time they refresh.
+
+groups:
+  - name: example
+    rules:
+    - record: code:prometheus_http_requests_total:sum
+      expr: sum by (code) (prometheus_http_requests_total)
+
+Alerting rules:
+
+Alerting rules allow you to define alert conditions based on Prometheus expression language expressions and to send notifications about firing alerts to an external service. Whenever the alert expression results in one or more vector elements at a given point in time, the alert counts as active for these elements' label sets.
+
+- The optional for clause causes Prometheus to wait for a certain duration between first encountering a new expression output vector element and counting an alert as firing for this element. In this case, Prometheus will check that the alert continues to be active during each evaluation for 10 minutes before firing the alert. Elements that are active, but not firing yet, are in the pending state. Alerting rules without the for clause will become active on the first evaluation.
+
+groups:
+- name: example
+  labels:
+    team: myteam
+  rules:
+  - alert: HighRequestLatency
+    expr: job:request_latency_seconds:mean5m{job="myjob"} > 0.5
+    for: 10m
+    keep_firing_for: 5m
+    labels:
+      severity: page
+    annotations:
+      summary: High request latency
+
+- There is also an optional keep_firing_for clause that tells Prometheus to keep this alert firing for the specified duration after the firing condition was last met. 
+
+- The labels clause allows specifying a set of additional labels to be attached to the alert. Any existing conflicting labels will be overwritten. The label values can be templated.
+
+- The annotations clause specifies a set of informational labels that can be used to store longer additional information such as alert descriptions or runbook links. The annotation values can be templated.
+
+Templating inside the prometheus rules:
+
+Label and annotation values can be templated using console templates. 
+The $labels variable holds the label key/value pairs of an alert instance. The configured external labels can be accessed via the $externalLabels variable. The $value variable holds the evaluated value of an alert instance.
+
+# To insert a firing element's label values:
+{{ $labels.<labelname> }}
+# To insert the numeric expression value of the firing element:
+{{ $value }}
+
+groups:
+- name: example
+  rules:
+  # Alert for any instance that is unreachable for >5 minutes.
+  - alert: InstanceDown
+    expr: up == 0
+    for: 5m
+    labels:
+      severity: page
+    annotations:
+      summary: "Instance {{ $labels.instance }} down"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes."
+
+Sending alert notifications
+Prometheus's alerting rules are good at figuring what is broken right now, but they are not a fully-fledged notification solution. Another layer is needed to add summarization, notification rate limiting, silencing and alert dependencies on top of the simple alert definitions. 
 
