@@ -15,5 +15,15 @@ Thanos:
 - 
 
 DrawBacks:
+- Reliability Issues ( OOM Kills, slow queries, alerting failures )
+- Query failure rates
+- avg read latencies
+- slow recovery ( slow WAL replays )
+
+Details
+- scrape_interval: 15s
+Active Series: 
+Injection GB/S: 
+
 
 
