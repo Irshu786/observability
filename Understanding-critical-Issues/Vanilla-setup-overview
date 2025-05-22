@@ -1,0 +1,4 @@
+- This setup helps us if we want to monitor basic apps and exporters on docker platform. 
+
+ Not suitable for big kubernetes cluster with GB/s of data flowing.
+ 
