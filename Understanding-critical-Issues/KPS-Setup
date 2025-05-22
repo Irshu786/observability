@@ -1,0 +1,11 @@
+- This setup is widely used in production grade environments for monitoring large scale platforms.
+
+This includes:
+- HA prometheus with remote write enabled.
+- Alerting Pipeline in place for quick alerting with defining groups, recievers, silencing.
+- Grafana suppoting as single pane of glass for multi-cluster environment visualising metrics at one place, Also easy building custom dashboards
+- Operator checking checking components health and submitting new prometheus rules defined and updating in prometheus
+- Supporing push gateway for pulling metrics by custom scripts
+- Node level metrics and app level metrics with kube-state with end-end almost real time visibility on CPU, memory, Network, Disks
+
+
