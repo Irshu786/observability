@@ -2,10 +2,18 @@
 
 This includes:
 - HA prometheus with remote write enabled.
-- Alerting Pipeline in place for quick alerting with defining groups, recievers, silencing.
+- Alerting Pipeline in place for quick alerts with defining groups, recievers, silencing.
 - Grafana suppoting as single pane of glass for multi-cluster environment visualising metrics at one place, Also easy building custom dashboards
-- Operator checking checking components health and submitting new prometheus rules defined and updating in prometheus
+- Operator checking components health and submitting new prometheus rules defined and updating in prometheus
 - Supporing push gateway for pulling metrics by custom scripts
 - Node level metrics and app level metrics with kube-state with end-end almost real time visibility on CPU, memory, Network, Disks
+
+
+Thanos:
+- Sidecar with prometheus for metrics retention in object store
+- Multiple storegateways with time based partitions for quick access of metric results for 2 months.
+- 
+
+DrawBacks:
 
 
