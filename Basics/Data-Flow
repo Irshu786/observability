@@ -8,6 +8,15 @@ i) Initially will append the blocks in Write Ahead Log(WAL)file inside /data/wal
 ii) At the same time, Prometheus keeps the data in RAM (Head Memory) for fast access for last 2 hours of data
 iii) For each 2 hours, prometheus saves this in-memory data (RAM) to disk in a permanent format called TSDB- /var/lib/prometheus
 
+
+Targets - [ Scraped By Prometheus ] --> [ WAL ] + [ IN-MEMORY]
+            Each 2hr -> Permanent TSDB
+
 Data Pulling Process:
+
+Clients will fetch the data based on the time range
+a) If within less than 2 hours, Data gets serverd from RAM
+b) Older data from storage directory ( default retention: 10days)
+
 
 
