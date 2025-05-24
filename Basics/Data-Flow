@@ -1,1 +1,13 @@
+We will understand the flow of data being pulled, stored and accessed from clients from prometheus
+
+Data Pushing Process:
+
+- Prometheus is responsible to pull the metrics from collectors, smons and external endpoints paths.
+- Based on the scrape interval (15seconds) It will pull the data and
+i) Initially will append the blocks in Write Ahead Log(WAL)file inside /data/wal/ - To prevent data loss
+ii) At the same time, Prometheus keeps the data in RAM (Head Memory) for fast access for last 2 hours of data
+iii) For each 2 hours, prometheus saves this in-memory data (RAM) to disk in a permanent format called TSDB- /var/lib/prometheus
+
+Data Pulling Process:
+
 
