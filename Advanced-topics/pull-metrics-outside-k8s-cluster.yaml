@@ -11,7 +11,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: external-node-exporter
-  namespace: monitoring  # Change namespace if needed
+  namespace: monitoring
+  labels:
+    k8s-app: external-node-exporter
 spec:
   type: ClusterIP
   ports:
