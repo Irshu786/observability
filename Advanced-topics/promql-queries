@@ -4,8 +4,13 @@ There are 4 metric types ( Counter, Gauge, histogram, summary)
 
 Counter: These metrics shows details for values low to high and zero when restarts (packet drops) - Incremental
 Guage: Memory, CPU, network, total http requests metrics - Increase/decrease
-#Range: Average rate of requests per second 
+#Range: Average sum of rate of requests per second
+11:25 AM - 5 Requests
+11:30 AM - 10 Requests
+
+Total RPS = 10-5/5*60 = 5/300 = 0.016 RPS
+
 Histogram: Requests per second taken in average and counts them in configurable buckets. 
-Ex: Requests per second of an application 3RPS
+Ex: Requests per second of an application 2RPS
 Summary: It also provides a total count of observations and a sum of all observed values
 ex: Requests per second with sum of 200, 500 codes in last 1 hour for an service
