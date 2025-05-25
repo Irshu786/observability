@@ -8,3 +8,6 @@ Chunk Count: 3,69,40,876
 The number of chunks (compressed time series data segments) currently in memory. 
 Chunks are the core unit of storage for time series samples.
 
+Min Time / Max Time: 04:00 - 06:47
+The earliest and latest timestamps in the head block (in milliseconds since epoch). 
+Shows the time range currently held in memory.
