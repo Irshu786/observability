@@ -1,5 +1,56 @@
 ## Pulling metrics inside the kubernetes cluster is possible with node-exporter running as daemonset and static job predefined in prometheus
 
-#step-1: Crete an endpoint with external IP of server IP
+#step-1: Crete an service with name same for EP
+#step-2: Create an EP with same name as svc name and add the extra IP's
 #step-2: create an smon with (release=prometheus which is added in prometheus configuration) for pulling metrics
 #step-3: Check if you are able to see the metrics in grafana explore
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-node-exporter
+  namespace: monitoring  # Change namespace if needed
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9100
+      protocol: TCP
+      name: metrics
+---
+
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-node-exporter
+  namespace: monitoring
+subsets:
+  - addresses:
+      - ip: 10.0.0.101
+    ports:
+      - port: 9100
+        name: metrics
+  - addresses:
+      - ip: 10.0.0.102
+    ports:
+      - port: 9100
+        name: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: external-node-exporter-metrics-smon
+  namespace: monitoring
+  labels:
+    release: prometheus ##This conf should be present in prometheus
+spec:
+  selector:
+    matchLabels:
+      k8s-app: external-node-exporter
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      interval: 15s
