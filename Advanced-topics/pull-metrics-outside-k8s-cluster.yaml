@@ -1,1 +1,5 @@
+## Pulling metrics inside the kubernetes cluster is possible with node-exporter running as daemonset and static job predefined in prometheus
 
+#step-1: Crete an endpoint with external IP of server IP
+#step-2: create an smon with (release=prometheus which is added in prometheus configuration) for pulling metrics
+#step-3: Check if you are able to see the metrics in grafana explore
