@@ -33,8 +33,112 @@ vmui
 VictoriaMetrics cluster version provides UI for query troubleshooting and exploration. The UI is available at http://<vmselect>:8481/select/<accountID>/vmui/ in each vmeselect service.
 The UI allows exploring query results via graphs and tables. See more details about vmui .
 
+Multitenancy
+VictoriaMetrics cluster supports multiple isolated tenants (aka namespaces). 
+Tenants are identified by accountID or accountID:projectID, which are put inside request URLs for writes and reads. See these docs for details.
+
+Some facts about tenants in VictoriaMetrics:
+
+Each accountID and projectID is identified by an arbitrary 32-bit integer in the range [0 .. 2^32). If projectID is missing, then it is automatically assigned to 0. 
+It is expected that other information about tenants such as auth tokens, tenant names, limits, accounting, etc. is stored in a separate relational database. 
+This database must be managed by a separate service sitting in front of VictoriaMetrics cluster such as vmauth or vmgateway .
+
+Tenants are automatically created when the first data point is written into the given tenant.
+
+Data for all the tenants is evenly spread among available vmstorage nodes. 
+This guarantees even load among vmstorage nodes when different tenants have different amounts of data and different query load.
+
+The database performance and resource usage doesn’t depend on the number of tenants. It depends mostly on the total number of active time series in all the tenants. 
+### A time series is considered active if it received at least a single sample during the last hour.
+
+The list of registered tenants can be obtained via http://<vmselect>:8481/admin/tenants url.
+
+VictoriaMetrics exposes various per-tenant statistics via metrics.
+
+*** High availability:
+The database is considered highly available if it continues accepting new data and processing incoming queries when some of its components are temporarily unavailable. 
+VictoriaMetrics cluster is highly available according to this definition
+
+It is recommended to run all the components for a single cluster in the same subnetwork with high bandwidth, low latency and low error rates. 
+This improves cluster performance and availability. It isn’t recommended spreading components for a single cluster across multiple availability zones, since cross-AZ 
+network usually has lower bandwidth, higher latency and higher error rates comparing the network inside a single AZ.
 
 
+Cluster setup:
+A minimal cluster must contain the following nodes:
+
+a single vmstorage node with -retentionPeriod and -storageDataPath flags
+a single vminsert node with -storageNode=<vmstorage_host>
+a single vmselect node with -storageNode=<vmstorage_host>
+
+
+It is recommended to run at least two nodes for each service for high availability purposes. In this case the cluster continues working when a single node is temporarily 
+unavailable and the remaining nodes can handle the increased workload. The node may be temporarily unavailable when the underlying hardware breaks, during software 
+upgrades, migration or other maintenance tasks.
+
+It is preferred to run many small vmstorage nodes over a few big vmstorage nodes, since this reduces the workload increase onthe remaining vmstorage nodes when 
+some of vmstorage nodes become temporarily unavailable.
+
+An http load balancer such as vmauth or nginx must be put in front of vminsert and vmselect nodes. It must contain the following routing 
+configs according to the url format :
+
+requests starting with /insert must be routed to port 8480 on vminsert nodes.
+requests starting with /select must be routed to port 8481 on vmselect nodes.
+Ports may be altered by setting -httpListenAddr on the corresponding nodes.
+
+Cluster availability:
+
+VictoriaMetrics cluster architecture prioritizes availability over data consistency. This means that the cluster remains available for data ingestion and data querying 
+if some of its components are temporarily unavailable.
+
+VictoriaMetrics cluster remains available if the following conditions are met:
+
+- HTTP load balancer must stop routing requests to unavailable vminsert and vmselect nodes (vmauth stops routing requests to unavailable nodes).
+- At least a single vminsert node must remain available in the cluster for processing data ingestion workload. 
+The remaining active vminsert nodes must have enough compute capacity (CPU, RAM, network bandwidth) for handling the current data ingestion workload. 
+- At least a single vmselect node must remain available in the cluster for processing query workload.
+The remaining active vmselect nodes must have enough compute capacity (CPU, RAM, network bandwidth, disk IO) for handling the current query workload.
+- At least a single vmstorage node must remain available in the cluster for accepting newly ingested data and for processing incoming queries. 
+The remaining active vmstorage nodes must have enough compute capacity (CPU, RAM, network bandwidth, disk IO, free disk space) for handling the current workload.
+
+The cluster works in the following way when some of vmstorage nodes are unavailable:
+- vminsert re-routes newly ingested data from unavailable vmstorage nodes to remaining healthy vmstorage nodes. 
+This guarantees that the newly ingested data is properly saved if the healthy vmstorage nodes have enough CPU, RAM, disk IO and network bandwidth for processing the 
+increased data ingestion workload. 
+vminsert spreads evenly the additional data among the healthy vmstorage nodes in order to spread evenly the increased load on these nodes. 
+During re-routing, healthy vmstorage nodes will experience higher resource usage and increase in number of active time series.
+
+vmselect continues serving queries if at least a single vmstorage nodes is available. It marks responses as partial for queries served from the remaining healthy 
+vmstorage nodes, since such responses may miss historical data stored on the temporarily unavailable vmstorage nodes. 
+Every partial JSON response contains "isPartial": true option. 
+*** If you prefer consistency over availability, then run vmselect nodes with -search.denyPartialResponse command-line flag.
+In this case vmselect returns an error if at least a single vmstorage node is unavailable. 
+Another option is to pass deny_partial_response=1 query arg to requests to vmselect nodes.
+
+vmselect also accepts -replicationFactor=N command-line flag. This flag instructs vmselect to return full response if less than -replicationFactor vmstorage nodes 
+are unavailable during querying, since it assumes that the remaining vmstorage nodes contain the full data. 
+
+Cardinality limiter
+vmstorage nodes can be configured with limits on the number of unique time series across all the tenants with the following command-line flags:
+
+-storage.maxHourlySeries is the limit on the number of active time series during the last hour.
+-storage.maxDailySeries is the limit on the number of unique time series during the day. This limit can be used for limiting daily time series churn rate .
+Note that these limits are set and applied individually per each vmstorage node in the cluster. 
+So, if the cluster has N vmstorage nodes, then the cluster-level limits will be N times bigger than the per-vmstorage limits.
+
+Replication and data safety
+By default, VictoriaMetrics offloads replication to the underlying storage pointed by -storageDataPath such as Google compute persistent disk, 
+which guarantees data durability. VictoriaMetrics supports application-level replication if replicated durable persistent disks cannot be used for some reason.
+
+The replication can be enabled by passing -replicationFactor=N command-line flag to vminsert.
+This instructs vminsert to store N copies for every ingested sample on N distinct vmstorage nodes. 
+This guarantees that all the stored data remains available for querying if up to N-1 vmstorage nodes are unavailable.
+
+Passing -replicationFactor=N command-line flag to vmselect instructs it to not mark responses as partial if less than -replicationFactor vmstorage nodes are 
+unavailable during the query. See cluster availability docs for details.
+
+The cluster must contain at least 2*N-1 vmstorage nodes, where N is replication factor, in order to maintain the given replication factor for newly ingested data 
+when N-1 of storage nodes are unavailable.
 
 
 
