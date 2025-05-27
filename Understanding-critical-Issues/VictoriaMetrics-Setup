@@ -1,1 +1,49 @@
 - This architecture needs to be gone through once
+
+VictoriaMetrics is a fast, cost-effective and scalable time series database. It can be used as a long-term remote storage for Prometheus.
+
+It is recommended to use the single-node version instead of the cluster version for ingestion rates lower than a million data points per second. 
+The single-node version scales perfectly with the number of CPU cores, RAM and available storage space. 
+The single-node version is easier to configure and operate compared to the cluster version, so think twice before choosing the cluster version.
+
+There is also user-friendly database for logs - VictoriaLogs .
+
+Prominent features:
+Supports all the features of the single-node version
+Performance and capacity scale horizontally.
+Supports multiple independent namespaces for time series data (aka multi-tenancy).
+Supports replication.
+
+Architecture overview
+VictoriaMetrics cluster consists of the following services:
+
+vmstorage - stores the raw data and returns the queried data on the given time range for the given label filters
+vminsert - accepts the ingested data and spreads it among vmstorage nodes according to consistent hashing over metric name and all its labels
+vmselect - performs incoming queries by fetching the needed data from all the configured vmstorage nodes
+
+
+Each service may scale independently and may run on the most suitable hardware. vmstorage nodes don’t know about each other, don’t communicate with each other and 
+don’t share any data. 
+This is a shared nothing architecture . It increases cluster availability, and simplifies cluster maintenance as well as cluster scaling.
+
+Note that vmselect despite being stateless still requires some disk space (a few GBs) for temporary caches. Refer to the -cacheDataPath command-line flag for more details.
+
+
+vmui
+VictoriaMetrics cluster version provides UI for query troubleshooting and exploration. The UI is available at http://<vmselect>:8481/select/<accountID>/vmui/ in each vmeselect service.
+The UI allows exploring query results via graphs and tables. See more details about vmui .
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
