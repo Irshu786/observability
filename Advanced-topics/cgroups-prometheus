@@ -1,0 +1,59 @@
+1. What are cgroups?
+➤ Control Groups (cgroups) are a Linux kernel feature that:
+Limit, monitor, and isolate resource usage for groups of processes.
+Track:
+CPU, Memory, Disk I/O and Network bandwidth
+
+Used by containers (via Docker/containerd) to enforce resource boundaries.
+
+File: /sys/fs/cgroup/memory/kubepods/pod123/container456/memory.usage_in_bytes
+Value: Shows current memory usage of a specific container.
+
+
+2. How does containerd expose these metrics?
+➤ containerd is the container runtime used by Kubernetes.
+It launches containers and assigns them to cgroups.
+
+It reads from the cgroups filesystem (/sys/fs/cgroup/) to get:
+
+CPU usage, Memory usage and Process counts
+
+
+3. How does Kubelet with cAdvisor pull metrics?
+➤ Kubelet includes cAdvisor (Container Advisor) built-in:
+cAdvisor collects container metrics by:
+
+Discovering containers via containerd.
+Reading cgroup files for each container.
+Monitoring /proc and /sys/fs/cgroup.
+
+
+4. How does Prometheus get the metrics?
+➤ Prometheus is configured to scrape Kubelet endpoints over port 10250 (authenticated):
+Kubelet endpoints:
+
+Endpoint	Format	Purpose
+/metrics/resource	Prometheus	Node & container usage (preferred)
+/metrics/cadvisor	Prometheus	Legacy raw container stats
+/stats/summary	JSON	Used by metrics-server for HP
+
+
+When u run a container:
+
+containerd (or Docker) talks to the Linux kernel.
+
+It creates cgroups for:
+CPU, Memory, blkio (disk I/O), pids (number of processes)
+It assigns the nginx process into those cgroups.
+
+The container process now runs inside isolated resource boundaries. 
+
+
+
+
+
+
+
+
+
+
