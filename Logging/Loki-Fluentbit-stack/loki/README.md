@@ -39,11 +39,6 @@ max_line_size: 0
 
 
 
-
-
-
-
-
 # Loki Stack Setup (Basic & Scalable)
 
 This guide provides a simple and scalable setup for deploying **Loki** — a log aggregation system that integrates well with **Grafana**. The setup includes components necessary for scaling, with optimizations for performance and basic checks to ensure the system is up and running.
@@ -68,13 +63,7 @@ This guide provides a simple and scalable setup for deploying **Loki** — a log
    - [loki-query-frontend](#loki-query-frontend)  
    - [loki-query-scheduler](#loki-query-scheduler)  
    - [loki-results-cache](#loki-results-cache)  
-   - [loki-ruler](#loki-ruler)  
-4. [Configuration Details](#configuration-details)  
-   - [Auth Configuration](#auth-configuration)  
-   - [Performance Settings](#performance-settings)  
-   - [UI Settings](#ui-settings)  
-5. [Deployment Instructions](#deployment-instructions)  
-6. [Troubleshooting](#troubleshooting)  
+   - [loki-ruler](#loki-ruler)   
 
 ---
 
@@ -103,29 +92,22 @@ To ensure a smooth setup, we recommend the following configurations:
    max_global_streams_per_user: 0
    max_line_size: 0
 
-# Loki Stack Setup (Basic & Scalable)
 
-This guide provides a simple and scalable setup for deploying **Loki** — a log aggregation system that integrates well with **Grafana**. The setup includes components necessary for scaling, with optimizations for performance and basic checks to ensure the system is up and running.
-
----
-
-## UI Settings
+3. **UI Settings**
 
 - **UI enabled:** `true`  
-  Enables the Grafana UI for log visualization.
+  Enables the Loki UI for log visualization.
 
----
 
-## Deployment Type
+4. **Deployment Type**
 
 - **lokiCanary:** Deployment is preferred.  
   You can opt for DaemonSet if required for specific environments (e.g., Kubernetes).
 
----
-
-## IPV6
+5. **IPV6**
 
 - Set `enableIPV6: false` if you do not need IPv6 support.
+
 
 ---
 
@@ -186,17 +168,6 @@ This guide provides a simple and scalable setup for deploying **Loki** — a log
 ### loki-ruler
 - **What it is:** Runs rules and generates alerts based on log data.  
 - **Why it’s used:** Automates monitoring by triggering alerts on specific log conditions.
-
----
-
-## Configuration Details
-
-### Auth Configuration
-
-Disable authentication for basic setups to simplify deployment:
-
-```yaml
-auth_enabled: false
 
 
 
