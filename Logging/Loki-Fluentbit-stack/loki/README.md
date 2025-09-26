@@ -1,6 +1,6 @@
 ## The basic setup of loki stack - simple scalable setup
 
-loki-canary
+# loki-canary
 loki-chunks-cache
 loki-compactor
 loki-distributor, loki-distributor-headless
