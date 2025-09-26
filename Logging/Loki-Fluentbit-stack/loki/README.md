@@ -1,23 +1,4 @@
-## The basic setup of loki stack - simple scalable setup
-
-# loki-canary
-loki-chunks-cache
-loki-compactor
-loki-distributor, loki-distributor-headless
-loki-gateway
-loki-index-gateway, loki-index-gateway-headless
-loki-ingestor
-loki-ingestor-zone-a-headless
-loki-ingestor-zone-b-headless
-loki-ingestor-zone-c-headless
-loki-memberlist
-loki-querier
-loki-query-frontend, loki-query-frontend
-loki-query-scheduler
-loki-results-cache
-loki-ruler
-
-# Loki Stack Setup (Basic & Scalable)
+# Loki Stack Setup simple-scalable (Basic & Scalable)
 
 This guide provides a simple and scalable setup for deploying **Loki** — a log aggregation system that integrates well with **Grafana**. The setup includes components necessary for scaling, with optimizations for performance and basic checks to ensure the system is up and running.
 
